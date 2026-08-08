@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 320px;
+    font-family: 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+  }
+  .header {
+    background: linear-gradient(135deg, #16213e, #0f3460);
+    padding: 16px 18px;
+    border-bottom: 2px solid #e94560;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header .icon { font-size: 22px; }
+  .header h1 { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+  .header small { font-size: 10px; color: #a0a0c0; display: block; margin-top: 1px; }
+
+  .body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .status-row {
+    background: #16213e;
+    border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid #2a2a4a;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .status-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+  .status-line .label { color: #7070a0; }
+  .status-line .val { color: #e0e0ff; font-weight: 600; }
+  .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .dot.on { background: #00e676; box-shadow: 0 0 6px #00e676; }
+  .dot.off { background: #555; }
+
+  label.field-label {
+    font-size: 11px;
+    color: #7070a0;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: block;
+    margin-bottom: 5px;
+  }
+  textarea {
+    width: 100%;
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 13px;
+    padding: 10px;
+    resize: vertical;
+    min-height: 72px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { outline: none; border-color: #e94560; }
+
+  .btn-row { display: flex; gap: 8px; }
+  button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.4px;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #btnToggle.enable  { background: #00e676; color: #000; }
+  #btnToggle.disable { background: #e94560; color: #fff; }
+  #btnNow { background: #0f3460; color: #e0e0e0; border: 1px solid #2a2a4a; flex: 0 0 auto; padding: 10px 14px; }
+  #btnNow:hover:not(:disabled) { background: #1a4a80; }
+
+  .toast {
+    font-size: 11px;
+    text-align: center;
+    padding: 6px 10px;
+    border-radius: 5px;
+    display: none;
+  }
+  .toast.ok  { background: #00401a; color: #00e676; }
+  .toast.err { background: #400010; color: #e94560; }
+  .toast.show { display: block; }
+
+  .footer {
+    text-align: center;
+    font-size: 10px;
+    color: #3a3a5a;
+    padding: 8px;
+    border-top: 1px solid #1e1e3a;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <span class="icon">🏰</span>
+  <div>
+    <h1>Forum Auto-poster</h1>
+    <small>It's not cheating if you don't get caught!</small>
+  </div>
+</div>
+
+<div class="body">
+  <div class="status-row">
+    <div class="status-line">
+      <span class="label">Status</span>
+      <span class="val" id="statusVal"><span class="dot off"></span>Inactive</span>
+    </div>
+    <div class="status-line">
+      <span class="label">Last post</span>
+      <span class="val" id="lastPost">—</span>
+    </div>
+    <div class="status-line">
+      <span class="label">Next post</span>
+      <span class="val" id="nextPost">—</span>
+    </div>
+    <div class="status-line" id="lastStatusRow" style="display:none">
+      <span class="label">Result</span>
+      <span class="val" id="lastStatus">—</span>
+    </div>
+  </div>
+
+  <div>
+    <label class="field-label" for="msgInput">Message</label>
+    <textarea id="msgInput" placeholder="Write your message..."></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button id="btnToggle" class="enable">▶ Start</button>
+    <button id="btnNow" title="Post now">⚡ Now!</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <details id="debugSection" style="display:none">
+    <summary style="font-size:11px;color:#7070a0;cursor:pointer;user-select:none;">🔍 Debug log</summary>
+    <pre id="debugOut" style="font-size:10px;color:#a0a0c0;background:#0d0d1e;border-radius:6px;padding:8px;margin-top:6px;overflow:auto;max-height:200px;white-space:pre-wrap;word-break:break-all;"></pre>
+  </details>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
