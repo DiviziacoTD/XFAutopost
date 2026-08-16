@@ -1,21 +1,23 @@
 // =========================
-// Version: 1.3.1
+// Version: 1.4.0
 // Author: DiviziacoTD
 // =========================
 
-const THREAD_URL = "XXXXX"; // Input the Thread url; Include /page-9999 so that the name check is performed on the last page
-const ALARM_NAME = "Forum-Autoposter";
-const INTERVAL_HOURS = 1; // Enter the number of hours (default = 1)
+const THREAD_URL = "XXXX"; // Input the Thread url; Include /page-9999 so that the name check is performed on the last page
+const ALARM_NAME = "XF-Autoposter";
+const MIN_MINUTES = 6 * 60;
+const MAX_MINUTES = 7 * 60;
 
-// Initialize alarm on install/startup
+function randomDelay() {
+  return Math.floor(Math.random() * (MAX_MINUTES - MIN_MINUTES + 1)) + MIN_MINUTES;
+}
+
 chrome.runtime.onInstalled.addListener(init);
 chrome.runtime.onStartup.addListener(init);
 
 async function init() {
   const { enabled } = await chrome.storage.local.get("enabled");
-  if (enabled) {
-    scheduleAlarm();
-  }
+  if (enabled) scheduleAlarm();
 }
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -23,15 +25,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   const { enabled } = await chrome.storage.local.get("enabled");
   if (enabled) {
     await postMessage();
+    scheduleAlarm();
   }
 });
 
 async function scheduleAlarm() {
   await chrome.alarms.clear(ALARM_NAME);
-  chrome.alarms.create(ALARM_NAME, {
-    delayInMinutes: INTERVAL_HOURS * 60,
-    periodInMinutes: INTERVAL_HOURS * 60
-  });
+  const delay = randomDelay();
+  chrome.alarms.create(ALARM_NAME, { delayInMinutes: delay });
+  await chrome.storage.local.set({ nextDelay: delay });
 }
 
 async function stopAlarm() {
@@ -40,20 +42,14 @@ async function stopAlarm() {
 
 async function postMessage() {
   const { message } = await chrome.storage.local.get("message");
-  const text = message || "🏰 Forum AutoPoster";
+  const text = message || "Automatic post";
 
   let tab;
   try {
-    // Open tab (not active, background)
     tab = await chrome.tabs.create({ url: THREAD_URL, active: false });
-
-    // Wait for page to load
     await waitForTabLoad(tab.id);
-
-    // Wait extra for JS rendering
     await delay(3000);
 
-    // Execute the posting script
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: injectPost,
@@ -62,24 +58,24 @@ async function postMessage() {
 
     const result = results?.[0]?.result;
     const now = Date.now();
-    const debugStr = result?.debug ? JSON.stringify(result.debug, null, 2) : "ni debug";
+    const debugStr = result?.debug ? JSON.stringify(result.debug, null, 2) : "no debug";
 
     if (result?.success) {
       await chrome.storage.local.set({ lastPost: now, lastStatus: "success", lastDebug: debugStr });
-      notify("Post sent!", `Post published at ${new Date(now).toLocaleTimeString("it-IT")}`);
+      notify("✅ Post sent!", `Message posted at ${new Date(now).toLocaleTimeString("en-US")}`);
     } else if (result?.skipped) {
       await chrome.storage.local.set({ lastPost: now, lastStatus: "⏭ " + result.error, lastDebug: debugStr });
-      notify("⏭ Skip", result.error);
+      notify("⏭ Skipped", result.error);
     } else {
       const errMsg = result?.error || "unknown";
       await chrome.storage.local.set({ lastPost: now, lastStatus: "error: " + errMsg, lastDebug: debugStr });
-      notify("Post error!", errMsg);
-      console.error("Forum AutoPoster debug:", debugStr);
+      notify("❌ Post error", errMsg);
+      console.error("AutoPoster debug:", debugStr);
     }
   } catch (err) {
     const now = Date.now();
     await chrome.storage.local.set({ lastPost: now, lastStatus: "error: " + err.message });
-    notify("Critical Error!", err.message);
+    notify("❌ Critical error", err.message);
   } finally {
     if (tab) {
       await delay(2000);
@@ -110,17 +106,15 @@ function injectPost(text) {
   };
 
   try {
-    // Check last poster — skip if name contains a specific user: replace XXXX below case-insensitive with the wanted name
-    // Use data-author on the message article to avoid false matches from quotes inside posts
     const messages = Array.from(document.querySelectorAll("article.message[data-author]"));
     if (messages.length > 0) {
       const lastPoster = messages[messages.length - 1].getAttribute("data-author").trim();
       debug.lastPoster = lastPoster;
-      if (lastPoster.toLowerCase().includes("XXXX")) {
-        return { success: false, skipped: true, error: "The last poster is " + lastPoster + " — skip!", debug };
+      if (lastPoster.toLowerCase().includes("indra")) {
+        return { success: false, skipped: true, error: "Last poster is " + lastPoster + " — skipping", debug };
       }
     } else {
-      debug.lastPoster = "not found";
+      debug.lastPoster = "not detected";
     }
 
     const editorSelectors = [
@@ -163,26 +157,22 @@ function injectPost(text) {
       debug.usedTextarea = textareaSel;
     }
 
-    // Find the reply submit button by text content (avoids matching search bar)
     let submitBtn = null, submitSel = null;
     const allSubmits = Array.from(document.querySelectorAll("button[type='submit'], input[type='submit']"));
     const byText = allSubmits.find(el =>
-      el.textContent.includes("answer") || el.textContent.includes("submit") ||
+      el.textContent.includes("risposta") || el.textContent.includes("Invia") ||
       el.className.includes("reply") || el.className.includes("--reply")
     );
     if (byText) {
       submitBtn = byText;
       submitSel = "text-match:" + byText.textContent.trim().slice(0, 30);
-    } else {
-      // Last resort: last submit button on the page (reply form is at the bottom)
-      if (allSubmits.length > 0) {
-        submitBtn = allSubmits[allSubmits.length - 1];
-        submitSel = "last-submit";
-      }
+    } else if (allSubmits.length > 0) {
+      submitBtn = allSubmits[allSubmits.length - 1];
+      submitSel = "last-submit";
     }
 
     if (!submitBtn) {
-      return { success: false, error: "NO SUBMIT BUTTON", debug };
+      return { success: false, error: "NO SUBMIT BUTTON FOUND", debug };
     }
 
     debug.usedSubmit = submitSel;
@@ -219,7 +209,6 @@ function notify(title, message) {
   });
 }
 
-// Listen for messages from popup
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     if (msg.action === "enable") {
@@ -233,8 +222,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     } else if (msg.action === "postNow") {
       sendResponse({ ok: true });
       await postMessage();
+      await scheduleAlarm();
     } else if (msg.action === "getStatus") {
-      const data = await chrome.storage.local.get(["enabled", "lastPost", "lastStatus", "message", "lastDebug"]);
+      const data = await chrome.storage.local.get(["enabled", "lastPost", "lastStatus", "message", "lastDebug", "nextDelay"]);
       const alarms = await chrome.alarms.get(ALARM_NAME);
       sendResponse({ ...data, nextAlarm: alarms?.scheduledTime });
     }
