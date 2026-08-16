@@ -2,7 +2,7 @@ const $ = id => document.getElementById(id);
 
 function fmt(ts) {
   if (!ts) return "—";
-  return new Date(ts).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return new Date(ts).toLocaleString("en-US", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function showToast(msg, ok = true) {
@@ -54,7 +54,7 @@ $("btnToggle").addEventListener("click", async () => {
   const msg = await saveMessage();
 
   if (!s.enabled) {
-    if (!msg) { showToast("Write a message first!", false); return; }
+    if (!msg) { showToast("Enter a message first!", false); return; }
     await chrome.runtime.sendMessage({ action: "enable" });
     showToast("AutoPoster enabled ✅");
   } else {
@@ -66,14 +66,14 @@ $("btnToggle").addEventListener("click", async () => {
 
 $("btnNow").addEventListener("click", async () => {
   const msg = await saveMessage();
-  if (!msg) { showToast("Write a message first!", false); return; }
+  if (!msg) { showToast("Enter a message first!", false); return; }
   $("btnNow").disabled = true;
   $("btnNow").textContent = "...";
   showToast("Posting...", true);
   await chrome.runtime.sendMessage({ action: "postNow" });
   setTimeout(async () => {
     $("btnNow").disabled = false;
-    $("btnNow").textContent = "⚡Now!";
+    $("btnNow").textContent = "⚡ Now";
     await refreshStatus();
   }, 8000);
 });
