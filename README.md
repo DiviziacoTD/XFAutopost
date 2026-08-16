@@ -1,13 +1,13 @@
 # XenForo AutoPoster
 
-A lightweight Google Chrome extension that automatically posts a predefined message to a specific XenForo forum thread at configurable intervals.
+A lightweight Google Chrome extension that automatically posts a predefined message to a specific XenForo forum thread at randomized intervals.
 
 The extension runs in the background using the Chrome Extensions Manifest V3 APIs and does not require an external server.
 
 ## Features
 
 * Automatically posts a predefined message to a configured XenForo thread.
-* Configurable posting interval.
+* Randomized posting interval to avoid predictable automation patterns.
 * Runs in the background using `chrome.alarms`.
 * Opens the target thread in a background tab when a post is due.
 * Detects the XenForo quick-reply editor automatically.
@@ -32,7 +32,7 @@ The extension runs in the background using the Chrome Extensions Manifest V3 API
 
 ## How It Works
 
-When AutoPoster is enabled, the extension creates a recurring Chrome alarm.
+When AutoPoster is enabled, the extension creates a one-shot Chrome alarm with a randomized delay.
 
 At each scheduled interval:
 
@@ -47,6 +47,7 @@ At each scheduled interval:
 9. The result is stored locally.
 10. A desktop notification reports the outcome.
 11. The temporary tab is closed.
+12. A new alarm is created with a fresh randomized delay.
 
 ## Configuration
 
@@ -54,8 +55,9 @@ Before installing the extension, edit `background.js`:
 
 ```javascript
 const THREAD_URL = "XXXXX";
-const ALARM_NAME = "Forum-Autoposter";
-const INTERVAL_HOURS = 1;
+const ALARM_NAME = "autopost";
+const MIN_MINUTES = 6 * 60;
+const MAX_MINUTES = 7 * 60;
 ```
 
 ### Target Thread
@@ -72,19 +74,23 @@ Using `/page-9999` allows XenForo to redirect the request to the current last pa
 
 ### Posting Interval
 
-Change `INTERVAL_HOURS` to the desired interval:
+The extension uses a randomized interval between `MIN_MINUTES` and `MAX_MINUTES` to avoid predictable posting patterns.
 
 ```javascript
-const INTERVAL_HOURS = 1;
+const MIN_MINUTES = 6 * 60;
+const MAX_MINUTES = 7 * 60;
 ```
 
-For example:
+This schedules each post at a random time between 6 and 7 hours after the previous one.
+
+Each interval is drawn independently, so consecutive posts will not follow a fixed schedule.
+
+To change the range, adjust both constants. For example, to randomize between 4 and 5 hours:
 
 ```javascript
-const INTERVAL_HOURS = 6;
+const MIN_MINUTES = 4 * 60;
+const MAX_MINUTES = 5 * 60;
 ```
-
-will schedule a post every six hours.
 
 ## Preventing Duplicate Posts
 
@@ -98,7 +104,7 @@ const messages = Array.from(
 );
 ```
 
-It then reads the `data-author` attribute of the last message.
+It reads the `data-author` attribute of the last `<article>` element, which XenForo populates with the post author's username. This approach is reliable against false matches caused by quoted content inside posts, since it reads a DOM attribute rather than visible text.
 
 You can configure the username that should cause the extension to skip posting by changing:
 
@@ -142,7 +148,7 @@ Starts or stops the automatic posting schedule.
 
 ### Post Now
 
-Immediately executes the posting process without waiting for the next scheduled interval.
+Immediately executes the posting process without waiting for the next scheduled interval. A new randomized alarm is scheduled afterward.
 
 ## Error Handling
 
@@ -174,7 +180,7 @@ The extension uses the following Chrome permissions:
 
 | Permission      | Purpose                                           |
 | --------------- | ------------------------------------------------- |
-| `alarms`        | Schedule recurring automatic posts                |
+| `alarms`        | Schedule one-shot alarms with randomized delays   |
 | `storage`       | Store the message, settings, and execution status |
 | `tabs`          | Open and close the temporary forum tab            |
 | `scripting`     | Execute the posting logic inside the XenForo page |
@@ -207,7 +213,7 @@ chrome://extensions/
 4. Enable **Developer mode**.
 5. Select **Load unpacked**.
 6. Select the extension directory.
-7. Configure `THREAD_URL` and `INTERVAL_HOURS` in `background.js`.
+7. Configure `THREAD_URL`, `MIN_MINUTES`, and `MAX_MINUTES` in `background.js`.
 8. Reload the extension from the Extensions page.
 9. Open the extension popup.
 10. Enter the message.
@@ -250,15 +256,12 @@ The extension does **not** use a XenForo API. It interacts with the forum throug
 
 If you find this extension useful and would like to support more development, you can [Buy Me a Coffee](https://buymeacoffee.com/diviziacotd)
 
-Any support is appreciated and helps keep the projects and improvements.
+Any support is appreciated and helps keep the projects and improvements going.
 
 ## Version
 
-Current version: **1.3.1**
+Current version: **1.4.0**
 
 ## Author
 
 **DiviziacoTD**
-
-
-
